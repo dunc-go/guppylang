@@ -60,6 +60,11 @@ def control(*args: Any, **kwargs: Any) -> Generator[None]:
     raise GuppyComptimeError(_MODIFIER_COMPTIME_ERROR.format(modifier="control"))
 
 
+def control_off(*args: Any, **kwargs: Any) -> Generator[None]:
+    """Dummy function to support `with control_off(...):` blocks in Guppy code."""
+    raise GuppyComptimeError(_MODIFIER_COMPTIME_ERROR.format(modifier="control_off"))
+
+
 def dagger(*args: Any, **kwargs: Any) -> Generator[None]:
     """Dummy function to support `with dagger(...):` blocks in Guppy code."""
     raise GuppyComptimeError(_MODIFIER_COMPTIME_ERROR.format(modifier="dagger"))

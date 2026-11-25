@@ -428,11 +428,11 @@ class CFGBuilder(AstVisitor[BB | None]):
                     span = Span(to_span(e.args[0]).start, to_span(e.args[-1]).end)
                     raise GuppyError(WrongNumberOfArgsError(span, 0, len(e.args)))
                 modifier = Dagger(e)
-            case ast.Call(func=ast.Name(id="control")):
+            case ast.Call(func=ast.Name(id=("control" | "control_off") as name)):
                 if len(e.args) == 0:
                     span = Span(to_span(e.func).end, to_span(e).end)
                     raise GuppyError(WrongNumberOfArgsError(span, 1, len(e.args)))
-                modifier = Control(e, e.args)
+                modifier = Control(e, e.args, on_zero=name == "control_off")
             case ast.Call(func=ast.Name(id="power")):
                 if len(e.args) == 0:
                     span = Span(to_span(e.func).end, to_span(e).end)

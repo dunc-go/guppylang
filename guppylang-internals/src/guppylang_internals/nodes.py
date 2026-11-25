@@ -767,6 +767,7 @@ class Control(ast.Call):
 
     ctrl: list[ast.expr]
     qubit_num: int | Const | None
+    on_zero: bool
 
     _fields = (
         "func",
@@ -778,7 +779,9 @@ class Control(ast.Call):
         "ctrl": list[ast.expr],
     }
 
-    def __init__(self, node: ast.Call, ctrl: list[ast.expr]) -> None:
+    def __init__(
+        self, node: ast.Call, ctrl: list[ast.expr], *, on_zero: bool = False
+    ) -> None:
         super().__init__(
             func=node.func,
             args=node.args,
@@ -788,6 +791,7 @@ class Control(ast.Call):
         set_location_from(self, node)
         self.ctrl = ctrl
         self.qubit_num = None
+        self.on_zero = on_zero
 
     # See MakeIter for explanation
     __reduce__ = object.__reduce__
