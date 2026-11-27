@@ -71,7 +71,8 @@ class ExpectedError(Error):
 class UnknownModifierError(Error):
     title: ClassVar[str] = "Unknown modifier"
     span_label: ClassVar[str] = (
-        "Expected one of {{dagger, control(...), control_off(...), or power(...)}}"
+        "Expected one of {{dagger, control(...), control_off(...), "
+        "mixed_controls(...), or power(...)}}"
     )
 
 

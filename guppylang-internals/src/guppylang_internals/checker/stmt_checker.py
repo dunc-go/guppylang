@@ -79,6 +79,7 @@ from guppylang_internals.span import Span, to_span
 from guppylang_internals.tys import Effect
 from guppylang_internals.tys.builtin import (
     array_type,
+    bool_type,
     get_array_length,
     get_element_type,
     get_iter_size,
@@ -439,6 +440,12 @@ class StmtChecker(AstVisitor[BBStatement]):
             assert len(ctrl) > 0
             ctrl[0], ty = self._synth_expr(ctrl[0])
 
+            if control.mask is not None and not is_array_type(ty):
+                n = ExistentialConstVar.fresh("n", NumericType(NumericType.Kind.Nat))
+                raise GuppyTypeError(
+                    TypeMismatchError(ctrl[0], array_type(qubit_ty(), n), ty)
+                )
+
             if is_array_type(ty):
                 if len(ctrl) > 1:
                     span = Span(to_span(control.func).end, to_span(control).end)
@@ -473,6 +480,23 @@ class StmtChecker(AstVisitor[BBStatement]):
                             "able to control subscripted elements",
                         )
                 control.qubit_num = len(ctrl)
+
+            if control.mask is not None:
+                assert control.qubit_num is not None
+                assert not isinstance(control.qubit_num, int)
+                control.mask, subst = self._check_expr(
+                    control.mask, array_type(bool_type(), control.qubit_num)
+                )
+                assert len(subst) == 0
+                if isinstance(control.mask, PlaceNode):
+                    control.mask.place = check_place_assignable(
+                        control.mask.place,
+                        self.ctx,
+                        control.mask,
+                        "able to use subscripted masks",
+                    )
+                if not isinstance(control.qubit_num, ConstValue):
+                    raise RequiresMonomorphizationError
 
         for power in node.power:
             power.iter, subst = self._check_expr(

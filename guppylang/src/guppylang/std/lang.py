@@ -65,6 +65,15 @@ def control_off(*args: Any, **kwargs: Any) -> Generator[None]:
     raise GuppyComptimeError(_MODIFIER_COMPTIME_ERROR.format(modifier="control_off"))
 
 
+def mixed_controls(*args: Any, **kwargs: Any) -> Generator[None]:
+    """Dummy function to support `with mixed_controls(controls, mask):` blocks.
+
+    `controls` and `mask` are qubit and boolean arrays of the same length.
+    A `True` mask entry controls on |1>; a `False` entry controls on |0>.
+    """
+    raise GuppyComptimeError(_MODIFIER_COMPTIME_ERROR.format(modifier="mixed_controls"))
+
+
 def dagger(*args: Any, **kwargs: Any) -> Generator[None]:
     """Dummy function to support `with dagger(...):` blocks in Guppy code."""
     raise GuppyComptimeError(_MODIFIER_COMPTIME_ERROR.format(modifier="dagger"))

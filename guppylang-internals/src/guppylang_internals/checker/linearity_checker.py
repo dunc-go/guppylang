@@ -790,6 +790,20 @@ class BBLinearityChecker(ast.NodeVisitor):
                     unnamed_err = UnnamedExprNotUsedError(arg, ty)
                     unnamed_err.add_sub_diagnostic(UnnamedExprNotUsedError.Fix(None))
                     raise GuppyTypeError(unnamed_err)
+            if ctrl.mask is not None:
+                if isinstance(ctrl.mask, PlaceNode):
+                    self.visit_PlaceNode(
+                        ctrl.mask, use_kind=UseKind.BORROW, is_call_arg=None
+                    )
+                    # The mask is copied before entering the block, so its borrow
+                    # ends before checking the body's captured values.
+                    self._reassign_single_inout_arg(
+                        ctrl.mask.place,
+                        ctrl.mask.place.defined_at or ctrl.mask,
+                        visit_setitem=False,
+                    )
+                else:
+                    self.visit(ctrl.mask)
 
         # Check power
         for power in node.power:

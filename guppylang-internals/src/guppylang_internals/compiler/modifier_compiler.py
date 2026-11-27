@@ -14,6 +14,7 @@ from guppylang_internals.compiler.expr_compiler import ExprCompiler
 from guppylang_internals.metadata.common import add_unitary_metadata
 from guppylang_internals.nodes import CheckedModifiedBlock, PlaceNode
 from guppylang_internals.std._internal.compiler.array import (
+    array_clone,
     array_map,
     array_new,
     array_to_std_array,
@@ -53,6 +54,24 @@ def _flip_control_array(dfg: DFContainer, array: Wire, length: ht.TypeArg) -> Wi
     flip_fn = dfg.builder.load_function(flip, ht.FunctionType([ht.Qubit], [ht.Qubit]))
     map_op, _ = array_map(ht.Qubit, length, ht.Qubit)
     return dfg.builder.add_op((map_op, [Effect.PANIC]), array, flip_fn)
+
+
+def _flip_mixed_controls(dfg: DFContainer, array: Wire, mask: list[Wire]) -> Wire:
+    """Flip each control whose corresponding mask bit is false."""
+    qubits = unpack_array(dfg.builder, array)
+    flipped: list[Wire] = []
+    for qubit, bit in zip(qubits, mask, strict=True):
+        conditional = dfg.builder.add_conditional(bit, qubit)
+        false_case = conditional.add_case(0)
+        op = ExtOp(
+            QUANTUM_EXTENSION.get_op("X"), ht.FunctionType([ht.Qubit], [ht.Qubit])
+        )
+        false_case.set_outputs(false_case.add_op(pure(op), false_case.inputs()[0]))
+        true_case = conditional.add_case(1)
+        true_case.set_outputs(true_case.inputs()[0])
+        [result] = conditional.outputs()
+        flipped.append(result)
+    return dfg.builder.add_op(array_new(ht.Qubit, len(flipped)), *flipped)
 
 
 def compile_modified_block(
@@ -168,13 +187,29 @@ def compile_modified_block(
 
     # Compile control expressions and pack individual controls into arrays.
     ctrl_args: list[Wire] = []
+    masks: list[list[Wire] | None] = []
     for i, control in enumerate(modified_block.control):
         if is_array_type(get_type(control.ctrl[0])):
             control_array = expr_compiler.compile(control.ctrl[0], dfg)
-            if control.on_zero:
+            mask = None
+            if control.mask is not None:
+                mask_array = expr_compiler.compile(control.mask, dfg)
+                if isinstance(control.mask, PlaceNode):
+                    original, mask_array = dfg.builder.add_op(
+                        array_clone(ht.Bool, qubit_num_args[i]), mask_array
+                    )
+                    dfg[control.mask.place] = original
+                    if subscript := contains_subscript(control.mask.place):
+                        assert subscript.setitem_call is not None
+                        dfg[subscript.setitem_call.value_var] = dfg[subscript]
+                        expr_compiler.visit(subscript.setitem_call.call)
+                mask = unpack_array(dfg.builder, mask_array)
+                control_array = _flip_mixed_controls(dfg, control_array, mask)
+            elif control.on_zero:
                 control_array = _flip_control_array(
                     dfg, control_array, qubit_num_args[i]
                 )
+            masks.append(mask)
             # Note we assume this can panic (as any array_to_std_array) if the array has
             # any missing/borrowed elements. If we could guarantee that the controls do
             # not come from/though a custom-modifier (that might `array.take()` qubits),
@@ -184,6 +219,7 @@ def compile_modified_block(
             )
             ctrl_args.append(control_array)
         else:
+            masks.append(None)
             cs = [expr_compiler.compile(c, dfg) for c in control.ctrl]
             if control.on_zero:
                 cs = [_flip_qubit(dfg, c) for c in cs]
@@ -204,20 +240,25 @@ def compile_modified_block(
     call = dfg.builder.add_op(
         (CallIndirect(), effects),
         call,
-        *ctrl_args,
+        *reversed(ctrl_args),
         *args,
     )
     outports = iter(call)
 
     # Unpack returned controls
     control_subscripts: list[SubscriptAccess] = []
-    for i, control in enumerate(modified_block.control):
+    # Each control modifier prepends its controls to the function signature,
+    # so the last modifier's controls are returned first.
+    for i in reversed(range(len(modified_block.control))):
+        control = modified_block.control[i]
         outport = next(outports)
         if is_array_type(get_type(control.ctrl[0])):
             control_array = dfg.builder.add_op(
                 std_array_to_array(ht.Qubit, qubit_num_args[i]), outport
             )
-            if control.on_zero:
+            if (mask := masks[i]) is not None:
+                control_array = _flip_mixed_controls(dfg, control_array, mask)
+            elif control.on_zero:
                 control_array = _flip_control_array(
                     dfg, control_array, qubit_num_args[i]
                 )

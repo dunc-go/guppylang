@@ -1,0 +1,8 @@
+Error: Not enough arguments (at $FILE:8:23)
+  | 
+6 | @guppy
+7 | def invalid(controls: array[qubit, 2]) -> None:
+8 |     with mixed_controls(controls):
+  |                        ^^^^^^^^^^ Missing argument (expected 2, got 1)
+
+Guppy compilation failed due to 1 previous error

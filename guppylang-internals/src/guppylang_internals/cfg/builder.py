@@ -433,6 +433,15 @@ class CFGBuilder(AstVisitor[BB | None]):
                     span = Span(to_span(e.func).end, to_span(e).end)
                     raise GuppyError(WrongNumberOfArgsError(span, 1, len(e.args)))
                 modifier = Control(e, e.args, on_zero=name == "control_off")
+            case ast.Call(func=ast.Name(id="mixed_controls")):
+                if e.keywords:
+                    raise GuppyError(
+                        UnsupportedError(e.keywords[0], "Keyword arguments")
+                    )
+                if len(e.args) != 2:
+                    span = Span(to_span(e.func).end, to_span(e).end)
+                    raise GuppyError(WrongNumberOfArgsError(span, 2, len(e.args)))
+                modifier = Control(e, [e.args[0]], mask=e.args[1])
             case ast.Call(func=ast.Name(id="power")):
                 if len(e.args) == 0:
                     span = Span(to_span(e.func).end, to_span(e).end)

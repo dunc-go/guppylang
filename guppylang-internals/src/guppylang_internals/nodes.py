@@ -768,19 +768,27 @@ class Control(ast.Call):
     ctrl: list[ast.expr]
     qubit_num: int | Const | None
     on_zero: bool
+    mask: ast.expr | None
 
     _fields = (
         "func",
         "args",
         "keywords",
         "ctrl",
+        "mask",
     )
     _field_types = getattr(ast.Call, "_field_types", {}) | {
         "ctrl": list[ast.expr],
+        "mask": ast.expr | None,
     }
 
     def __init__(
-        self, node: ast.Call, ctrl: list[ast.expr], *, on_zero: bool = False
+        self,
+        node: ast.Call,
+        ctrl: list[ast.expr],
+        *,
+        on_zero: bool = False,
+        mask: ast.expr | None = None,
     ) -> None:
         super().__init__(
             func=node.func,
@@ -792,6 +800,7 @@ class Control(ast.Call):
         self.ctrl = ctrl
         self.qubit_num = None
         self.on_zero = on_zero
+        self.mask = mask
 
     # See MakeIter for explanation
     __reduce__ = object.__reduce__

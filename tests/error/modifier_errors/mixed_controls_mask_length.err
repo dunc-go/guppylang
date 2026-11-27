@@ -1,0 +1,9 @@
+Error: Type mismatch (at $FILE:8:34)
+  | 
+6 | @guppy
+7 | def invalid(controls: array[qubit, 2], mask: array[bool, 3]) -> None:
+8 |     with mixed_controls(controls, mask):
+  |                                   ^^^^ Expected expression of type `array[bool, 2]`, got
+  |                                        `array[bool, 3]`
+
+Guppy compilation failed due to 1 previous error

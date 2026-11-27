@@ -405,6 +405,8 @@ class BBUnitaryChecker(ast.NodeVisitor):
         for control in node.control:
             for arg in control.ctrl:
                 self.visit(arg)
+            if control.mask is not None:
+                self.visit(control.mask)
         for power in node.power:
             self.visit(power.iter)
 
